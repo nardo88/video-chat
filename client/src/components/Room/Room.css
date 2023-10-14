@@ -1,0 +1,12 @@
+.video__wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.video__item {
+  width: 100%;
+}
+.video {
+  width: 100%;
+  border: 1px solid red;
+}

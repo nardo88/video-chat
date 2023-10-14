@@ -1,13 +1,16 @@
 const path = require('path')
 const express = require('express')
-const { createServer } = require('http')
-const socketIo = require('socket.io')
-const { version, validate } = require('uuid')
-const socketEvents = require('./actions')
-
 const app = express()
+const { createServer } = require('http')
 const server = createServer(app)
-const io = socketIo(server)
+const io = require('socket.io')(server)
+const { version, validate } = require('uuid')
+
+const socketEvents = require('./actions')
+const PORT = 5000
+
+const publicPath = path.join(__dirname, 'build')
+app.use(express.static(publicPath))
 
 // создадим функцию, которая будет возвращать комнаты
 function getClientRooms() {
@@ -76,23 +79,25 @@ io.on('connection', (socket) => {
     const { rooms } = socket
 
     // получим список пользователей в комнатах
-    Array.from(rooms).forEach((roomId) => {
-      const clients = Array.from(io.sockets.adapter.rooms.get(roomId) || [])
-      clients.forEach((clientId) => {
-        // каждому пользователю эмитим событие, для того что бы клиент исключил наш пир из списка
-        io.to(clientId).emit(socketEvents.REMOVE_PEER, {
-          peerId: socket.id,
+    Array.from(rooms)
+      .filter((roomId) => validate(roomId) && version(roomId) === 4)
+      .forEach((roomId) => {
+        const clients = Array.from(io.sockets.adapter.rooms.get(roomId) || [])
+        clients.forEach((clientId) => {
+          // каждому пользователю эмитим событие, для того что бы клиент исключил наш пир из списка
+          io.to(clientId).emit(socketEvents.REMOVE_PEER, {
+            peerId: socket.id,
+          })
+
+          // так же для текущего сокета вызывваем события, что бы удалить пиры других клиентов комнаты из которой он выходит
+          socket.emit(socketEvents.REMOVE_PEER, {
+            peerId: clientId,
+          })
         })
 
-        // так же для текущего сокета вызывваем события, что бы удалить пиры других клиентов комнаты из которой он выходит
-        socket.emit(socketEvents.REMOVE_PEER, {
-          peerId: clientId,
-        })
+        // ну и покидаем комнату
+        socket.leave(roomId)
       })
-
-      // ну и покидаем комнату
-      socket.leave(roomId)
-    })
 
     shareRoomsInfo()
   }
@@ -100,8 +105,26 @@ io.on('connection', (socket) => {
   // добавим логику выхода из комнаты
   socket.on(socketEvents.LEAVE, leaveRoom)
   socket.on('disconnecting', leaveRoom)
+
+  // описываем логику когда на сервер передали SDP данные
+  socket.on(socketEvents.RELAY_SDP, ({ peerId, sessionDescription }) => {
+    // еогда мы получили SDP данные, мы конкретному пользователю отправляем session description
+    io.to(peerId).emit(socketEvents.SESSION_DESCRIPTION, {
+      // от кого пришел SESSION_DESCRIPTION
+      peerId: socket.id,
+      // сам offer
+      sessionDescription,
+    })
+  })
+  // обработаем событие когда поступил ICE кандидат
+  socket.on(socketEvents.RELAY_ICE, ({ peerId, iceCandidate }) => {
+    io.to(peerId).emit(socketEvents.ICE_CANDIDATE, {
+      peerId: socket.id,
+      iceCandidate,
+    })
+  })
 })
 
-server.listen('5000', () => {
+server.listen(PORT, () => {
   console.log('Server started')
 })

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import socket from '../../socket'
 import { socketEvents } from '../../socket/events'
 import { useNavigate } from 'react-router-dom'
@@ -6,17 +6,17 @@ import { v4 } from 'uuid'
 
 export const Main = () => {
   // создадим состояние где будем хранить доступные комнаты
-  const [rooms, setRooms] = useState([])
   const navigate = useNavigate()
-
+  const [rooms, setRooms] = useState([])
+  const rootNode = useRef()
   useEffect(() => {
     // при входе на страницу мы будем подписываться
     socket.on(socketEvents.SHARE_ROOMS, ({ rooms }) => {
-      setRooms(rooms)
+      if (rootNode.current) setRooms(rooms)
     })
   }, [])
   return (
-    <div>
+    <div ref={rootNode}>
       <h1>Доступные комнаты</h1>
       <ul>
         {rooms.map((roomId) => (
