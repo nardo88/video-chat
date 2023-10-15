@@ -6,6 +6,6 @@ export const socketEvents = {
   REMOVE_PEER: 'remove-peer', // когда мы удаляем peer (соединение между клиентами)
   RELAY_SDP: 'relay-sdp', // когда мы будем передавать sdp данные (медиа стримы)
   RELAY_ICE: 'relay-ice', // когда мы будем передавать ice кандидатов (физические подключения)
-  ICE_CANDIDATE: 'ise-candidate', // реакция на появление кандидата
+  ICE_CANDIDATE: 'ice-candidate', // реакция на появление кандидата
   SESSION_DESCRIPTION: 'session-description', // когда нам придет новая сессия и нам надо будет ее у себя использовать
 }

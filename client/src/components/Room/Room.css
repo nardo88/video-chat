@@ -5,8 +5,18 @@
 
 .video__item {
   width: 100%;
+  position: relative;
+  background-color: gray;
 }
 .video {
   width: 100%;
   border: 1px solid red;
+}
+
+.video__text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: white;
+  color: red;
 }

@@ -21,11 +21,10 @@ export const Room = () => {
       <div className="video__wrapper">
         {clients.map((clientId) => (
           <div key={clientId} className="video__item">
+            {clientId === LOCAL_VIDEO && <p className="video__text">local</p>}
             <video
               className="video"
-              ref={(instanse) => {
-                provideMediaRef(clientId, instanse)
-              }}
+              ref={(instanse) => provideMediaRef(clientId, instanse)}
               autoPlay
               playsInline
               muted={clientId === LOCAL_VIDEO}

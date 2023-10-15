@@ -20,7 +20,7 @@ export function useWebRTC(roomId) {
         return list
       }, cb)
     },
-    [clients, setClients]
+    [setClients]
   )
 
   // место где будем хранить все peerConnection
@@ -124,10 +124,6 @@ export function useWebRTC(roomId) {
       peerId,
       sessionDescription: remoteDescription,
     }) {
-      console.log({
-        peerId,
-        peerConnections: peerConnections.current,
-      })
       // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
       await peerConnections.current[peerId]?.setRemoteDescription(
         new RTCSessionDescription(remoteDescription)
@@ -222,13 +218,19 @@ export function useWebRTC(roomId) {
       localMediaStreem.current.getTracks().forEach((track) => track.stop())
       socket.emit(socketEvents.LEAVE)
     }
-  }, [roomId])
+  }, [roomId, addNewClient])
 
   // функция которая добавляет медиа элемент в perrMediaElements
   // clientId - id клиента
   // instanse - node element (тег video)
   const provideMediaRef = useCallback((id, node) => {
     peerMediaElements.current[id] = node
+    console.log({
+      id,
+      node,
+      current: peerMediaElements.current[id],
+      peerMediaElements: peerMediaElements.current,
+    })
   }, [])
 
   // экспортируем наших клиентов
