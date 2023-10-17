@@ -9,7 +9,7 @@ const socketEvents = {
   ICE_CANDIDATE: 'ise-candidate', // реакция на появление кандидата
   SESSION_DESCRIPTION: 'session-description', // когда нам придет новая сессия и нам надо будет ее у себя использовать
 }
-module.exports = socketEvents
+
 const ACTIONS = {
   JOIN: 'join',
   LEAVE: 'leave',

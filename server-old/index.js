@@ -33,6 +33,7 @@ function shareRoomsInfo() {
 
 io.on('connection', (socket) => {
   shareRoomsInfo()
+  handleSocket(socket)
 
   // опишем логику, что будет происходить когда пользователь будет присоединяться
   socket.on(socketEvents.JOIN, (config) => {
