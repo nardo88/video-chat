@@ -3,7 +3,10 @@ import { Server, Socket } from 'socket.io'
 
 interface IData {
   peerId: string
-  sessionDescription: any
+  sessionDescription: {
+    type: 'offer' | 'answer'
+    sdp: any // мета данные peer-а
+  }
 }
 
 // описываем логику когда на сервер передали SDP данные

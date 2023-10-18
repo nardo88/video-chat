@@ -3,7 +3,7 @@ import { Server, Socket } from 'socket.io'
 
 interface IData {
   peerId: string
-  iceCandidate: any
+  iceCandidate: object
 }
 
 export const relayIceCandidate = (socket: Socket, io: Server) => {
