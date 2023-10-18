@@ -23,7 +23,7 @@
   },
   "_moduleAliases": {
     "@root": ".",
-    "@utils": "./actions/",
+    "@utils": "./utils/",
     "@socket": "./socket/",
     "@actions": "./actions/"
   }
