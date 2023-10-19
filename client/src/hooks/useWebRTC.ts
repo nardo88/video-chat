@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useRef } from 'react'
+// @ts-ignore
 import freeice from 'freeice'
 import { useStateWithCallback } from './useStateWithCallback'
-import socket from '../socket'
 import { ACTIONS } from '@socket/events'
+import socket from '@socket/index'
 
 export const LOCAL_VIDEO = 'LOCAL_VIDEO'
 
-export function useWebRTC(roomId) {
+export function useWebRTC(roomId?: string): {
+  clients: string[]
+  provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
+} {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
 
   // тут мы проверяем, если в списке клиентом нового клиента еще нет, то мы его добавляем в список
   const addNewClient = useCallback(
-    (newClient, cb) => {
-      setClients((list) => {
+    (newClient: string, cb: () => void) => {
+      setClients((list: string[]) => {
         if (!list.includes(newClient)) {
           return [...list, newClient]
         }
@@ -24,18 +28,24 @@ export function useWebRTC(roomId) {
   )
 
   // место где будем хранить все peerConnection
-  const peerConnections = useRef({})
+  const peerConnections = useRef<Record<string, RTCPeerConnection>>({})
   // ссылка на медиастрим текущего пользователя (тот кто открыл браузер)
-  const localMediaStreem = useRef(null)
+  const localMediaStreem = useRef<null | MediaStream>(null)
   // ссылки на все peer medial элементы (т.е. видео элементы (тег video) других пользователей)
-  const peerMediaElements = useRef({
+  const peerMediaElements = useRef<Record<string, HTMLVideoElement | null>>({
     [LOCAL_VIDEO]: null,
   })
 
   // логика добавления нового пира
   useEffect(() => {
     // Функция добавления нового пира (клиента с настройками)
-    async function handleNewPeer({ peerId, createOffer }) {
+    async function handleNewPeer({
+      peerId,
+      createOffer,
+    }: {
+      peerId: string
+      createOffer: any
+    }) {
       // если мы уже подключены к пиру то ничего не делаем
       if (peerId in peerConnections.current) {
         return console.warn('already connected to peerId' + ' ' + peerId)
@@ -69,14 +79,14 @@ export function useWebRTC(roomId) {
           // добавляем в состояние нового клиента
           tracksNumber = 0
           addNewClient(peerId, () => {
-            peerMediaElements.current[peerId].srcObject = remoteStream
+            peerMediaElements.current[peerId]!.srcObject = remoteStream
           })
         } else {
           // FIX LONG RENDER IN CASE OF MANY CLIENTS
           let settled = false
           const interval = setInterval(() => {
             if (peerMediaElements.current[peerId]) {
-              peerMediaElements.current[peerId].srcObject = remoteStream
+              peerMediaElements.current[peerId]!.srcObject = remoteStream
               settled = true
             }
 
@@ -90,10 +100,12 @@ export function useWebRTC(roomId) {
       // теперь надо добавить наш медиастрим к нашему экземпляру peer соединения
       if (localMediaStreem.current) {
         localMediaStreem.current.getTracks().forEach((track) => {
-          peerConnections.current[peerId].addTrack(
-            track,
-            localMediaStreem.current
-          )
+          if (localMediaStreem.current) {
+            peerConnections.current[peerId].addTrack(
+              track,
+              localMediaStreem.current
+            )
+          }
         })
       }
       // если надо создать offer
@@ -103,17 +115,17 @@ export function useWebRTC(roomId) {
         // устанавливаем его в localDescription
         await peerConnections.current[peerId].setLocalDescription(offer)
         // отправляем SDP данные сокету
-        socket.emit(socketEvents.RELAY_SDP, {
+        socket.emit(ACTIONS.RELAY_SDP, {
           peerId,
           sessionDescription: offer,
         })
       }
     }
     // слушаем событие которое генерирует сервер
-    socket.on(socketEvents.ADD_PEER, handleNewPeer)
+    socket.on(ACTIONS.ADD_PEER, handleNewPeer)
 
     return () => {
-      socket.off(socketEvents.ADD_PEER)
+      socket.off(ACTIONS.ADD_PEER)
     }
   }, [])
 
@@ -123,6 +135,9 @@ export function useWebRTC(roomId) {
     async function setRemoteVideo({
       peerId,
       sessionDescription: remoteDescription,
+    }: {
+      peerId: string
+      sessionDescription: any
     }) {
       // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
       await peerConnections.current[peerId]?.setRemoteDescription(
@@ -135,48 +150,48 @@ export function useWebRTC(roomId) {
         // и устанавливаем ответ как localDescription
         peerConnections.current[peerId].setLocalDescription(answer)
         // и отправляем его в сокет
-        socket.emit(socketEvents.RELAY_SDP, {
+        socket.emit(ACTIONS.RELAY_SDP, {
           peerId,
           sessionDescription: answer,
         })
       }
     }
 
-    socket.on(socketEvents.SESSION_DESCRIPTION, setRemoteVideo)
+    socket.on(ACTIONS.SESSION_DESCRIPTION, setRemoteVideo)
 
     return () => {
-      socket.off(socketEvents.SESSION_DESCRIPTION)
+      socket.off(ACTIONS.SESSION_DESCRIPTION)
     }
   }, [])
 
   // опишем логику получения нового ICE кандидата
   useEffect(() => {
-    socket.on(socketEvents.ICE_CANDIDATE, ({ peerId, iceCandidate }) => {
+    socket.on(ACTIONS.ICE_CANDIDATE, ({ peerId, iceCandidate }) => {
       peerConnections.current[peerId].addIceCandidate(
         new RTCIceCandidate(iceCandidate)
       )
     })
 
     return () => {
-      socket.off(socketEvents.ICE_CANDIDATE)
+      socket.off(ACTIONS.ICE_CANDIDATE)
     }
   }, [])
 
   // опишем логику когда клиент покинул комнату
   useEffect(() => {
-    const handleRemovePeer = ({ peerId }) => {
+    const handleRemovePeer = ({ peerId }: { peerId: string }) => {
       if (peerConnections.current[peerId]) {
         peerConnections.current[peerId].close()
       }
       delete peerConnections.current[peerId]
       delete peerMediaElements.current[peerId]
 
-      setClients((prev) => prev.filter((c) => c !== peerId))
+      setClients((prev: string[]) => prev.filter((c) => c !== peerId))
     }
-    socket.on(socketEvents.REMOVE_PEER, handleRemovePeer)
+    socket.on(ACTIONS.REMOVE_PEER, handleRemovePeer)
 
     return () => {
-      socket.off(socketEvents.REMOVE_PEER)
+      socket.off(ACTIONS.REMOVE_PEER)
     }
   }, [])
 
@@ -206,7 +221,7 @@ export function useWebRTC(roomId) {
 
     startCapture()
       .then(() => {
-        socket.emit(socketEvents.JOIN, { room: roomId })
+        if (roomId) socket.emit(ACTIONS.JOIN, { room: roomId })
       })
       .catch((e) => {
         console.error('Error to get UserMedia', e)
@@ -215,23 +230,23 @@ export function useWebRTC(roomId) {
     // логика выхода из комнаты
     return () => {
       // останваливаем захват медиа
-      localMediaStreem.current.getTracks().forEach((track) => track.stop())
-      socket.emit(socketEvents.LEAVE)
+      if (localMediaStreem.current)
+        localMediaStreem.current.getTracks().forEach((track) => track.stop())
+      socket.emit(ACTIONS.LEAVE)
     }
   }, [roomId, addNewClient])
 
   // функция которая добавляет медиа элемент в perrMediaElements
   // clientId - id клиента
   // instanse - node element (тег video)
-  const provideMediaRef = useCallback((id, node) => {
-    peerMediaElements.current[id] = node
-    console.log({
-      id,
-      node,
-      current: peerMediaElements.current[id],
-      peerMediaElements: peerMediaElements.current,
-    })
-  }, [])
+  const provideMediaRef = useCallback(
+    (id: string, node: HTMLVideoElement | null) => {
+      if (node) {
+        peerMediaElements.current[id] = node
+      }
+    },
+    []
+  )
 
   // экспортируем наших клиентов
   return { clients, provideMediaRef }
