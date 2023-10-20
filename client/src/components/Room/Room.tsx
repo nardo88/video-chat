@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from 'react-router'
 import { LOCAL_VIDEO, useWebRTC } from '../../hooks/useWebRTC'
+import cls from './Room.module.scss'
 
 export const Room = () => {
   // Получаем id комнаты
@@ -17,10 +18,10 @@ export const Room = () => {
           <li key={c}>{c}</li>
         ))}
       </ul>
-      <div className="video__wrapper">
+      <div className={cls.wrapper}>
         {clients.map((clientId) => (
-          <div key={clientId} className="video__item">
-            {clientId === LOCAL_VIDEO && <p className="video__text">local</p>}
+          <div key={clientId} className={cls.video}>
+            <p className={cls.videoInfo}>{clientId}</p>
             <video
               className="video"
               ref={(instanse) => provideMediaRef(clientId, instanse)}
