@@ -201,8 +201,8 @@ export function useWebRTC(roomId?: string): {
       // записываем в ref ссылку на видеопоток от веб камеры + микрофон
       localMediaStreem.current = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: 1280,
-          height: 720,
+          width: 640,
+          height: 480,
         },
         audio: true,
       })
