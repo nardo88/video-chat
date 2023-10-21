@@ -46,6 +46,7 @@ export function useWebRTC(roomId?: string): {
       peerId: string
       createOffer: any
     }) {
+      console.log('handleNewPeer')
       // если мы уже подключены к пиру то ничего не делаем
       if (peerId in peerConnections.current) {
         return console.warn('already connected to peerId' + ' ' + peerId)
@@ -139,6 +140,7 @@ export function useWebRTC(roomId?: string): {
       peerId: string
       sessionDescription: any
     }) {
+      console.log('setRemoteVideo')
       // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
       await peerConnections.current[peerId]?.setRemoteDescription(
         new RTCSessionDescription(remoteDescription)
@@ -167,6 +169,7 @@ export function useWebRTC(roomId?: string): {
   // опишем логику получения нового ICE кандидата
   useEffect(() => {
     socket.on(ACTIONS.ICE_CANDIDATE, ({ peerId, iceCandidate }) => {
+      console.log('ICE_CANDIDATE')
       peerConnections.current[peerId].addIceCandidate(
         new RTCIceCandidate(iceCandidate)
       )
@@ -198,11 +201,12 @@ export function useWebRTC(roomId?: string): {
   // логика установки webRTC соединения
   useEffect(() => {
     async function startCapture() {
+      console.log('startCapture')
       // записываем в ref ссылку на видеопоток от веб камеры + микрофон
       localMediaStreem.current = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: 1280,
-          height: 720,
+          width: 640,
+          height: 480,
         },
         audio: true,
       })
