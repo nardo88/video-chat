@@ -11,6 +11,7 @@ export function useWebRTC(roomId?: string): {
   clients: string[]
   provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
   toggleMic: (isMuted: boolean) => void
+  toggleCamera: (isMuted: boolean) => void
 } {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
@@ -41,15 +42,19 @@ export function useWebRTC(roomId?: string): {
   const toggleMic = (isMute: boolean) => {
     socket.emit(ACTIONS.TOOGLE_MIC, { isMute, roomId })
   }
+  const toggleCamera = (disableVideo: boolean) => {
+    localMediaStreem.current!.getVideoTracks()[0]!.enabled = !disableVideo
+    socket.emit(ACTIONS.TOOGLE_CAMERA, { disableVideo, roomId })
+  }
 
   useEffect(() => {
-    const setMicStatus = (options: { peerId: string; isMuted: boolean }) => {
-      const { isMuted, peerId } = options
+    const setMicStatus = (options: { peerId: string; isMute: boolean }) => {
+      const { isMute, peerId } = options
       if (peerMediaElements.current[peerId]) {
         const mediaStreem = peerMediaElements.current[peerId]
           ?.srcObject as MediaStream
         const audioTrack = mediaStreem!.getAudioTracks()[0]
-        audioTrack.enabled = isMuted
+        audioTrack.enabled = !isMute
       }
     }
 
@@ -58,6 +63,28 @@ export function useWebRTC(roomId?: string): {
 
     return () => {
       socket.off(ACTIONS.SET_MIC_STATUS)
+    }
+  }, [])
+
+  useEffect(() => {
+    const setCameraStatus = (options: {
+      peerId: string
+      disableVideo: boolean
+    }) => {
+      const { disableVideo, peerId } = options
+      if (peerMediaElements.current[peerId]) {
+        const mediaStreem = peerMediaElements.current[peerId]
+          ?.srcObject as MediaStream
+        const audioTrack = mediaStreem!.getVideoTracks()[0]
+        audioTrack.enabled = !disableVideo
+      }
+    }
+
+    // слушаем событие которое генерирует сервер
+    socket.on(ACTIONS.SET_CAMERA_STATUS, setCameraStatus)
+
+    return () => {
+      socket.off(ACTIONS.SET_CAMERA_STATUS)
     }
   }, [])
 
@@ -71,7 +98,6 @@ export function useWebRTC(roomId?: string): {
       peerId: string
       createOffer: any
     }) {
-      console.log('handleNewPeer')
       // если мы уже подключены к пиру то ничего не делаем
       if (peerId in peerConnections.current) {
         return console.warn('already connected to peerId' + ' ' + peerId)
@@ -193,7 +219,6 @@ export function useWebRTC(roomId?: string): {
   // опишем логику получения нового ICE кандидата
   useEffect(() => {
     socket.on(ACTIONS.ICE_CANDIDATE, ({ peerId, iceCandidate }) => {
-      console.log('ICE_CANDIDATE')
       peerConnections.current[peerId].addIceCandidate(
         new RTCIceCandidate(iceCandidate)
       )
@@ -276,5 +301,5 @@ export function useWebRTC(roomId?: string): {
   )
 
   // экспортируем наших клиентов
-  return { clients, provideMediaRef, toggleMic }
+  return { clients, provideMediaRef, toggleMic, toggleCamera }
 }

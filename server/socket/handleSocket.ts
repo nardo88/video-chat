@@ -6,6 +6,7 @@ import { relaySdp } from './relaSdp'
 import { shareRoomsInfo } from '@utils/shareRoomsInfo'
 import { relayIceCandidate } from './relayIceCandidate'
 import { toggleMic } from './toggleMic'
+import { toggleCamera } from './toggleCamera'
 
 export function handleSocket(socket: Socket, io: Server) {
   // при подключении нового клиента обновляем всем список доступных комнат
@@ -21,4 +22,6 @@ export function handleSocket(socket: Socket, io: Server) {
   socket.on(ACTIONS.RELAY_ICE, relayIceCandidate(socket, io))
   // отключение микрофона
   socket.on(ACTIONS.TOOGLE_MIC, toggleMic(socket, io))
+  // отключение микрофона
+  socket.on(ACTIONS.TOOGLE_CAMERA, toggleCamera(socket, io))
 }

@@ -21,4 +21,8 @@ export enum ACTIONS {
   TOOGLE_MIC = 'toggle_mic',
   //принимаем статус микрофона
   SET_MIC_STATUS = 'set_mic_status',
+  // отключение камеры
+  TOOGLE_CAMERA = 'toggle_camera',
+  //принимаем статус камеры
+  SET_CAMERA_STATUS = 'set_camera_status',
 }

@@ -1,33 +1,32 @@
 import { useNavigate, useParams } from 'react-router'
 import { LOCAL_VIDEO, useWebRTC } from '../../hooks/useWebRTC'
-import cls from './Room.module.scss'
 import { useState } from 'react'
-import { Muted } from '@components/icons/Muted'
 import { classNames } from '@helpers/classNames'
 import { UnMute } from '@components/icons/UnMute'
+import { Camera } from '@components/icons/Camera'
+import cls from './Room.module.scss'
+import { Exit } from '@components/icons/Exit'
 
 export const Room = () => {
   // Получаем id комнаты
   const { id: roomId } = useParams()
   const [isMute, setIsMute] = useState(false)
+  const [disableVideo, setDisableVideo] = useState(false)
   // получаем список всех наших клиентов
-  const { clients, provideMediaRef, toggleMic } = useWebRTC(roomId)
+  const { clients, provideMediaRef, toggleMic, toggleCamera } =
+    useWebRTC(roomId)
   const navigate = useNavigate()
 
   const changeMicStatus = () => {
     toggleMic(!isMute)
     setIsMute(!isMute)
   }
+  const changeCameraStatus = () => {
+    setDisableVideo(!disableVideo)
+    toggleCamera(!disableVideo)
+  }
   return (
-    <div>
-      <button style={{ marginBottom: '30px' }} onClick={() => navigate('/')}>
-        Leave
-      </button>
-      <ul>
-        {clients.map((c) => (
-          <li key={c}>{c}</li>
-        ))}
-      </ul>
+    <div className={cls.room}>
       <div className={cls.wrapper}>
         {clients.map((clientId) => (
           <div key={clientId} className={cls.video}>
@@ -46,9 +45,21 @@ export const Room = () => {
         <button
           onClick={changeMicStatus}
           className={classNames(cls.btn, {}, [
-            isMute ? cls.mute : cls.unmutes,
+            isMute ? cls.disabled : cls.enabled,
           ])}>
-          {isMute ? <Muted /> : <UnMute />}
+          <UnMute />
+        </button>
+        <button
+          onClick={changeCameraStatus}
+          className={classNames(cls.btn, {}, [
+            disableVideo ? cls.disabled : cls.enabled,
+          ])}>
+          <Camera />
+        </button>
+        <button
+          className={classNames(cls.btn, {}, [cls.exitBtn])}
+          onClick={() => navigate('/')}>
+          <Exit />
         </button>
       </div>
     </div>
