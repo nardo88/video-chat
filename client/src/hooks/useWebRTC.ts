@@ -140,7 +140,6 @@ export function useWebRTC(roomId?: string): {
       peerId: string
       sessionDescription: any
     }) {
-      console.log('setRemoteVideo')
       // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
       await peerConnections.current[peerId]?.setRemoteDescription(
         new RTCSessionDescription(remoteDescription)
@@ -201,7 +200,6 @@ export function useWebRTC(roomId?: string): {
   // логика установки webRTC соединения
   useEffect(() => {
     async function startCapture() {
-      console.log('startCapture')
       // записываем в ref ссылку на видеопоток от веб камеры + микрофон
       localMediaStreem.current = await navigator.mediaDevices.getUserMedia({
         video: {
