@@ -13,7 +13,7 @@ interface IData {
 export function relaySdp(socket: Socket, io: Server) {
   return (data: IData) => {
     const { peerId, sessionDescription } = data
-    // еогда мы получили SDP данные, мы конкретному пользователю отправляем session description
+    // когда мы получили SDP данные, мы конкретному пользователю отправляем session description
     io.to(peerId).emit(ACTIONS.SESSION_DESCRIPTION, {
       // от кого пришел SESSION_DESCRIPTION
       peerId: socket.id,

@@ -23,7 +23,8 @@
     "paths": {
       "@components/*": ["./src/components/*"],
       "@hooks/*": ["./src/hooks/*"],
-      "@socket/*": ["./src/socket/*"]
+      "@socket/*": ["./src/socket/*"],
+      "@helpers/*": ["./src/helpers/*"]
     }
   },
   "include": ["src"],

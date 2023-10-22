@@ -17,4 +17,8 @@ export enum ACTIONS {
   ICE_CANDIDATE = 'ice-candidate',
   // когда нам придет новая сессия и нам надо будет ее у себя использовать
   SESSION_DESCRIPTION = 'session-description',
+  // отключение микрофона
+  TOOGLE_MIC = 'toggle_mic',
+  //принимаем статус микрофона
+  SET_MIC_STATUS = 'set_mic_status',
 }

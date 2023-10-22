@@ -10,6 +10,7 @@ export const LOCAL_VIDEO = 'LOCAL_VIDEO'
 export function useWebRTC(roomId?: string): {
   clients: string[]
   provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
+  toggleMic: (isMuted: boolean) => void
 } {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
@@ -35,6 +36,30 @@ export function useWebRTC(roomId?: string): {
   const peerMediaElements = useRef<Record<string, HTMLVideoElement | null>>({
     [LOCAL_VIDEO]: null,
   })
+
+  // функция выключения микрофона
+  const toggleMic = (isMute: boolean) => {
+    socket.emit(ACTIONS.TOOGLE_MIC, { isMute, roomId })
+  }
+
+  useEffect(() => {
+    const setMicStatus = (options: { peerId: string; isMuted: boolean }) => {
+      const { isMuted, peerId } = options
+      if (peerMediaElements.current[peerId]) {
+        const mediaStreem = peerMediaElements.current[peerId]
+          ?.srcObject as MediaStream
+        const audioTrack = mediaStreem!.getAudioTracks()[0]
+        audioTrack.enabled = isMuted
+      }
+    }
+
+    // слушаем событие которое генерирует сервер
+    socket.on(ACTIONS.SET_MIC_STATUS, setMicStatus)
+
+    return () => {
+      socket.off(ACTIONS.SET_MIC_STATUS)
+    }
+  }, [])
 
   // логика добавления нового пира
   useEffect(() => {
@@ -251,5 +276,5 @@ export function useWebRTC(roomId?: string): {
   )
 
   // экспортируем наших клиентов
-  return { clients, provideMediaRef }
+  return { clients, provideMediaRef, toggleMic }
 }
