@@ -1,10 +1,12 @@
 import { useNavigate, useParams } from 'react-router'
 import { LOCAL_VIDEO, useWebRTC } from '../../hooks/useWebRTC'
 import cls from './Room.module.scss'
+import { useState } from 'react'
 
 export const Room = () => {
   // Получаем id комнаты
   const { id: roomId } = useParams()
+  const [isMute, setIsMute] = useState(false)
   // получаем список всех наших клиентов
   const { clients, provideMediaRef } = useWebRTC(roomId)
   const navigate = useNavigate()
@@ -32,6 +34,7 @@ export const Room = () => {
           </div>
         ))}
       </div>
+      <div className={cls.constrolBlock}></div>
     </div>
   )
 }
