@@ -69,6 +69,70 @@
 .disabled {
   background-color: #e13939;
 }
+
 .enabled {
   background-color: #22e729;
+}
+
+.title {
+  margin-top: 30px;
+  color: #ffffff;
+  text-transform: uppercase;
+  font-size: 30px;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.nameWrapper {
+  margin: 40px auto;
+  width: 100%;
+  max-width: 500px;
+
+
+}
+
+.subTitle {
+  color: #ebebeb;
+  font-size: 20px;
+}
+
+.inputName {
+  padding: 10px;
+  width: 100%;
+  outline: none;
+  color: gray;
+  border: 2px solid gray;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 18px;
+
+}
+
+.joinBtn {
+  background-color: #22e729;
+  border: 2px solid #22e729;
+  padding: 10px 20px;
+  border-radius: 4px;
+  outline: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 30px auto 0;
+  font-weight: bold;
+  display: block;
+  transition: .3s;
+
+  &:hover {
+    color: #22e729;
+    background-color: #fff;
+  }
+
+}
+
+.error {
+  border-color: #e13939;
+}
+
+.errorText {
+  color: #e13939;
 }

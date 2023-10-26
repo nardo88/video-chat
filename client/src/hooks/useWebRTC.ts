@@ -10,11 +10,15 @@ export const LOCAL_VIDEO = 'LOCAL_VIDEO'
 export function useWebRTC(roomId?: string): {
   clients: string[]
   provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
-  toggleMic: (isMuted: boolean) => void
-  toggleCamera: (isMuted: boolean) => void
+  toggleMic: (val: boolean) => void
+  toggleCamera: (val: boolean) => void
+  isMute: boolean
+  disableVideo: boolean
 } {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
+  const [isMute, setIsMute] = useStateWithCallback(false)
+  const [disableVideo, setDisableVideo] = useStateWithCallback(false)
 
   // тут мы проверяем, если в списке клиентом нового клиента еще нет, то мы его добавляем в список
   const addNewClient = useCallback(
@@ -39,12 +43,17 @@ export function useWebRTC(roomId?: string): {
   })
 
   // функция выключения микрофона
-  const toggleMic = (isMute: boolean) => {
-    socket.emit(ACTIONS.TOOGLE_MIC, { isMute, roomId })
+  const toggleMic = (val: boolean) => {
+    setIsMute(val, () => {
+      localMediaStreem.current!.getAudioTracks()[0].enabled = isMute
+      socket.emit(ACTIONS.TOOGLE_MIC, { isMute, roomId })
+    })
   }
-  const toggleCamera = (disableVideo: boolean) => {
-    localMediaStreem.current!.getVideoTracks()[0]!.enabled = !disableVideo
-    socket.emit(ACTIONS.TOOGLE_CAMERA, { disableVideo, roomId })
+  const toggleCamera = (val: boolean) => {
+    setDisableVideo(val, () => {
+      localMediaStreem.current!.getVideoTracks()[0]!.enabled = disableVideo
+      socket.emit(ACTIONS.TOOGLE_CAMERA, { disableVideo, roomId })
+    })
   }
 
   useEffect(() => {
@@ -301,5 +310,12 @@ export function useWebRTC(roomId?: string): {
   )
 
   // экспортируем наших клиентов
-  return { clients, provideMediaRef, toggleMic, toggleCamera }
+  return {
+    clients,
+    provideMediaRef,
+    toggleMic,
+    toggleCamera,
+    isMute,
+    disableVideo,
+  }
 }
