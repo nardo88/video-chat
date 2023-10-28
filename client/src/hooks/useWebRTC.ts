@@ -7,7 +7,16 @@ import socket from '@socket/index'
 
 export const LOCAL_VIDEO = 'LOCAL_VIDEO'
 
-export function useWebRTC(roomId?: string): {
+export interface IOptions {
+  video: boolean
+  audio: boolean
+  name: string
+}
+
+export function useWebRTC(
+  roomId?: string,
+  options?: IOptions
+): {
   clients: string[]
   provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
   toggleMic: (val: boolean) => void
@@ -17,8 +26,10 @@ export function useWebRTC(roomId?: string): {
 } {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
-  const [isMute, setIsMute] = useStateWithCallback(false)
-  const [disableVideo, setDisableVideo] = useStateWithCallback(false)
+  const [isMute, setIsMute] = useStateWithCallback(options?.audio || false)
+  const [disableVideo, setDisableVideo] = useStateWithCallback(
+    options?.video || false
+  )
 
   // тут мы проверяем, если в списке клиентом нового клиента еще нет, то мы его добавляем в список
   const addNewClient = useCallback(
@@ -138,6 +149,8 @@ export function useWebRTC(roomId?: string): {
         // только в случае если количество треков равно 2 только тогда мы добавляем клиента
         if (tracksNumber === 2) {
           // добавляем в состояние нового клиента
+          remoteStream.getVideoTracks()[0].enabled = disableVideo
+          remoteStream.getAudioTracks()[0].enabled = isMute
           tracksNumber = 0
           addNewClient(peerId, () => {
             peerMediaElements.current[peerId]!.srcObject = remoteStream
@@ -260,13 +273,18 @@ export function useWebRTC(roomId?: string): {
   useEffect(() => {
     async function startCapture() {
       // записываем в ref ссылку на видеопоток от веб камеры + микрофон
-      localMediaStreem.current = await navigator.mediaDevices.getUserMedia({
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: 640,
           height: 480,
         },
         audio: true,
       })
+
+      mediaStream.getAudioTracks()[0].enabled = !isMute
+      mediaStream.getVideoTracks()[0].enabled = !disableVideo
+
+      localMediaStreem.current = mediaStream
       // после того как мы захватили видеопоток, нам надо добавить пользователя
       addNewClient(LOCAL_VIDEO, () => {
         const localVideoElement = peerMediaElements.current[LOCAL_VIDEO]

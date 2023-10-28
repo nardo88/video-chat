@@ -1,12 +1,11 @@
 import { FC } from 'react'
 import cls from './VideoChat.module.scss'
 import { classNames } from '@helpers/classNames'
-import { useWebRTC, LOCAL_VIDEO } from '@hooks/useWebRTC'
+import { useWebRTC, LOCAL_VIDEO, IOptions } from '@hooks/useWebRTC'
 import { useNavigate } from 'react-router'
 import { UnMute } from '@components/icons/UnMute'
 import { Camera } from '@components/icons/Camera'
 import { Exit } from '@components/icons/Exit'
-import { IOptions } from '@components/Room/Room'
 
 interface VideoChatProps {
   className?: string
@@ -15,7 +14,7 @@ interface VideoChatProps {
 }
 
 export const VideoChat: FC<VideoChatProps> = (props) => {
-  const { className, roomId } = props
+  const { className, roomId, options } = props
   // получаем список всех наших клиентов
   const {
     clients,
@@ -24,7 +23,7 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
     toggleCamera,
     disableVideo,
     isMute,
-  } = useWebRTC(roomId)
+  } = useWebRTC(roomId, options)
   const navigate = useNavigate()
 
   const changeMicStatus = () => {

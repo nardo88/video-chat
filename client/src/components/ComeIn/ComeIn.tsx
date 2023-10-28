@@ -1,9 +1,16 @@
-import { ChangeEvent, Dispatch, FC, SetStateAction, useState } from 'react'
-import cls from './ComeIn.module.scss'
-import { IOptions } from '@components/Room/Room'
+import {
+  ChangeEvent,
+  Dispatch,
+  FC,
+  SetStateAction,
+  useEffect,
+  useState,
+} from 'react'
 import { classNames } from '@helpers/classNames'
 import { UnMute } from '@components/icons/UnMute'
 import { Camera } from '@components/icons/Camera'
+import { IOptions } from '@hooks/useWebRTC'
+import cls from './ComeIn.module.scss'
 
 interface ComeInProps {
   options: IOptions
@@ -20,8 +27,16 @@ export const ComeIn: FC<ComeInProps> = (props) => {
     if (!options.name.trim()) {
       return setError('Необходимо указать имя')
     }
+    localStorage.setItem('userName', options.name)
     setIsShow(true)
   }
+  useEffect(() => {
+    const name = localStorage.getItem('userName')
+    if (name) {
+      setOptions((prev) => ({ ...prev, name }))
+    }
+  }, [])
+
   return (
     <div>
       <h2 className={cls.title}>присоединиться к видеовстрече</h2>

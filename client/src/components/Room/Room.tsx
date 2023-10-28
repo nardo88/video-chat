@@ -3,12 +3,7 @@ import { useState } from 'react'
 import { ComeIn } from '@components/ComeIn/ComeIn'
 import { VideoChat } from '@components/VideoChat/VideoChat'
 import cls from './Room.module.scss'
-
-export interface IOptions {
-  video: boolean
-  audio: boolean
-  name: string
-}
+import { IOptions } from '@hooks/useWebRTC'
 
 export const Room = () => {
   // Получаем id комнаты
