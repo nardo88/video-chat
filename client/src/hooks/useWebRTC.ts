@@ -63,7 +63,7 @@ export function useWebRTC(roomId?: string): {
         const mediaStreem = peerMediaElements.current[peerId]
           ?.srcObject as MediaStream
         const audioTrack = mediaStreem!.getAudioTracks()[0]
-        audioTrack.enabled = !isMute
+        audioTrack.enabled = isMute
       }
     }
 
@@ -85,7 +85,7 @@ export function useWebRTC(roomId?: string): {
         const mediaStreem = peerMediaElements.current[peerId]
           ?.srcObject as MediaStream
         const audioTrack = mediaStreem!.getVideoTracks()[0]
-        audioTrack.enabled = !disableVideo
+        audioTrack.enabled = disableVideo
       }
     }
 

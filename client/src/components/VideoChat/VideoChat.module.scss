@@ -1,0 +1,67 @@
+.wrapper {
+  padding: 30px;
+  display: flex;
+  gap: 20px;
+  flex-grow: 1;
+}
+
+.video {
+  position: relative;
+  max-width: 320px;
+  max-height: 280px;
+  border: 2px solid rgb(0, 0, 0);
+
+  video {
+    width: 100%;
+    height: 100%;
+    -o-object-fit: cover;
+    object-fit: cover;
+  }
+}
+
+.videoInfo {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  background-color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+.constrolBlock {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  width: 50px;
+  cursor: pointer;
+  outline: none;
+  border-radius: 6px;
+  border: 1px solid transparent;
+
+  svg {
+    width: 35px;
+    height: 35px;
+    fill: white;
+  }
+}
+
+.exitBtn {
+  border: 1px solid #e13939;
+  background-color: #e13939;
+}
+
+.disabled {
+  background-color: #e13939;
+}
+
+.enabled {
+  background-color: #22e729;
+}
