@@ -13,11 +13,16 @@ export interface IOptions {
   name: string
 }
 
+export interface IClient {
+  peerId: string
+  name: string
+}
+
 export function useWebRTC(
-  roomId?: string,
-  options?: IOptions
+  roomId: string,
+  options: IOptions
 ): {
-  clients: string[]
+  clients: IClient[]
   provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
   toggleMic: (val: boolean) => void
   toggleCamera: (val: boolean) => void
@@ -33,10 +38,12 @@ export function useWebRTC(
 
   // тут мы проверяем, если в списке клиентом нового клиента еще нет, то мы его добавляем в список
   const addNewClient = useCallback(
-    (newClient: string, cb: () => void) => {
-      setClients((list: string[]) => {
-        if (!list.includes(newClient)) {
-          return [...list, newClient]
+    (client: IClient, cb: () => void) => {
+      const { peerId } = client
+
+      setClients((list: IClient[]) => {
+        if (!list.find((c) => c.peerId === peerId)) {
+          return [...list, client]
         }
         return list
       }, cb)
@@ -114,8 +121,10 @@ export function useWebRTC(
     async function handleNewPeer({
       peerId,
       createOffer,
+      name,
     }: {
       peerId: string
+      name: string
       createOffer: any
     }) {
       // если мы уже подключены к пиру то ничего не делаем
@@ -128,6 +137,7 @@ export function useWebRTC(
         // freeice - предоставляет адреса STUN серверов
         iceServers: freeice(),
       })
+
       // создаем слушатель на событие onicecandidate
       peerConnections.current[peerId].onicecandidate = (event) => {
         // если кандидат есть, то нам надо поделиться им со всеми
@@ -152,7 +162,8 @@ export function useWebRTC(
           remoteStream.getVideoTracks()[0].enabled = disableVideo
           remoteStream.getAudioTracks()[0].enabled = isMute
           tracksNumber = 0
-          addNewClient(peerId, () => {
+
+          addNewClient({ peerId, name: name || 'Неивестный бобер' }, () => {
             peerMediaElements.current[peerId]!.srcObject = remoteStream
           })
         } else {
@@ -192,6 +203,7 @@ export function useWebRTC(
         socket.emit(ACTIONS.RELAY_SDP, {
           peerId,
           sessionDescription: offer,
+          name: options.name,
         })
       }
     }
@@ -209,13 +221,21 @@ export function useWebRTC(
     async function setRemoteVideo({
       peerId,
       sessionDescription: remoteDescription,
+      name,
     }: {
       peerId: string
       sessionDescription: any
+      name: string
     }) {
       // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
       await peerConnections.current[peerId]?.setRemoteDescription(
         new RTCSessionDescription(remoteDescription)
+      )
+
+      setClients((prev: IClient[]) =>
+        prev.map((client) =>
+          client.peerId === peerId ? { ...client, name } : client
+        )
       )
 
       // если это offer то нам надо создать ответ (answer)
@@ -227,6 +247,7 @@ export function useWebRTC(
         socket.emit(ACTIONS.RELAY_SDP, {
           peerId,
           sessionDescription: answer,
+          name: options.name,
         })
       }
     }
@@ -260,7 +281,7 @@ export function useWebRTC(
       delete peerConnections.current[peerId]
       delete peerMediaElements.current[peerId]
 
-      setClients((prev: string[]) => prev.filter((c) => c !== peerId))
+      setClients((prev: IClient[]) => prev.filter((c) => c.peerId !== peerId))
     }
     socket.on(ACTIONS.REMOVE_PEER, handleRemovePeer)
 
@@ -286,7 +307,7 @@ export function useWebRTC(
 
       localMediaStreem.current = mediaStream
       // после того как мы захватили видеопоток, нам надо добавить пользователя
-      addNewClient(LOCAL_VIDEO, () => {
+      addNewClient({ peerId: LOCAL_VIDEO, name: options.name }, () => {
         const localVideoElement = peerMediaElements.current[LOCAL_VIDEO]
         // если видео тег нашего медиапотока есть, то мы должны:
         if (localVideoElement) {

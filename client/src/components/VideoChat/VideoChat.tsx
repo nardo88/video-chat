@@ -35,15 +35,15 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
   return (
     <div className={classNames(cls.VideoChat, {}, [className])}>
       <div className={cls.wrapper}>
-        {clients.map((clientId) => (
-          <div key={clientId} className={cls.video}>
-            <p className={cls.videoInfo}>{clientId}</p>
+        {clients.map((client) => (
+          <div key={client.peerId} className={cls.video}>
+            <p className={cls.videoInfo}>{client.name}</p>
             <video
               className="video"
-              ref={(instanse) => provideMediaRef(clientId, instanse)}
+              ref={(instanse) => provideMediaRef(client.peerId, instanse)}
               autoPlay
               playsInline
-              muted={clientId === LOCAL_VIDEO}
+              muted={client.peerId === LOCAL_VIDEO}
             />
           </div>
         ))}
