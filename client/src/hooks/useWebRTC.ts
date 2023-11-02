@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 // @ts-ignore
 import freeice from 'freeice'
 import { useStateWithCallback } from './useStateWithCallback'
@@ -26,14 +26,20 @@ export function useWebRTC(
   provideMediaRef: (id: string, node: HTMLVideoElement | null) => void
   toggleMic: (val: boolean) => void
   toggleCamera: (val: boolean) => void
+  shareDesctop: () => void
   isMute: boolean
   disableVideo: boolean
+  desctopShare: null | MediaStreamTrack
 } {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
   const [isMute, setIsMute] = useStateWithCallback(options?.audio || false)
   const [disableVideo, setDisableVideo] = useStateWithCallback(
     options?.video || false
+  )
+  // состояние для потока демонстрации рабочего стола
+  const [desctopShare, setDesctopShare] = useState<null | MediaStreamTrack>(
+    null
   )
 
   // тут мы проверяем, если в списке клиентом нового клиента еще нет, то мы его добавляем в список
@@ -64,55 +70,51 @@ export function useWebRTC(
   const toggleMic = (val: boolean) => {
     setIsMute(val, () => {
       localMediaStreem.current!.getAudioTracks()[0].enabled = isMute
-      socket.emit(ACTIONS.TOOGLE_MIC, { isMute, roomId })
     })
   }
+  // функция отключения камеры
   const toggleCamera = (val: boolean) => {
     setDisableVideo(val, () => {
       localMediaStreem.current!.getVideoTracks()[0]!.enabled = disableVideo
-      socket.emit(ACTIONS.TOOGLE_CAMERA, { disableVideo, roomId })
     })
+  }
+  // функция демонстрации экрана
+  const shareDesctop = () => {
+    if (localMediaStreem.current) {
+      navigator.mediaDevices.getDisplayMedia().then((data) => {
+        const track = data.getTracks()[0]
+        localMediaStreem.current!.addTrack(track)
+        setDesctopShare(track)
+        socket.emit(ACTIONS.START_SHARE_DESCTOP, { trackId: track.id })
+
+        track.onended = () => {
+          localMediaStreem.current!.removeTrack(track)
+          setDesctopShare(null)
+        }
+      })
+    }
   }
 
   useEffect(() => {
-    const setMicStatus = (options: { peerId: string; isMute: boolean }) => {
-      const { isMute, peerId } = options
-      if (peerMediaElements.current[peerId]) {
-        const mediaStreem = peerMediaElements.current[peerId]
-          ?.srcObject as MediaStream
-        const audioTrack = mediaStreem!.getAudioTracks()[0]
-        audioTrack.enabled = isMute
-      }
-    }
-
-    // слушаем событие которое генерирует сервер
-    socket.on(ACTIONS.SET_MIC_STATUS, setMicStatus)
-
-    return () => {
-      socket.off(ACTIONS.SET_MIC_STATUS)
-    }
-  }, [])
-
-  useEffect(() => {
-    const setCameraStatus = (options: {
+    async function startShare({
+      peerId,
+      trackId,
+    }: {
       peerId: string
-      disableVideo: boolean
-    }) => {
-      const { disableVideo, peerId } = options
-      if (peerMediaElements.current[peerId]) {
-        const mediaStreem = peerMediaElements.current[peerId]
+      trackId: string
+    }) {
+      if (peerMediaElements.current) {
+        const mediaProvider = peerMediaElements.current[peerId]
           ?.srcObject as MediaStream
-        const audioTrack = mediaStreem!.getVideoTracks()[0]
-        audioTrack.enabled = disableVideo
+        mediaProvider.getTracks().forEach((track) => {
+          if (track.id === trackId) {
+            setDesctopShare(track)
+          }
+        })
       }
     }
 
-    // слушаем событие которое генерирует сервер
-    socket.on(ACTIONS.SET_CAMERA_STATUS, setCameraStatus)
-
-    return () => {
-      socket.off(ACTIONS.SET_CAMERA_STATUS)
-    }
+    socket.on(ACTIONS.START_SHARE_DESCTOP, startShare)
   }, [])
 
   // логика добавления нового пира
@@ -356,5 +358,7 @@ export function useWebRTC(
     toggleCamera,
     isMute,
     disableVideo,
+    shareDesctop,
+    desctopShare,
   }
 }

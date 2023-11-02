@@ -1,4 +1,4 @@
-import { FC } from 'react'
+import { FC, useEffect, useRef } from 'react'
 import cls from './VideoChat.module.scss'
 import { classNames } from '@helpers/classNames'
 import { useWebRTC, LOCAL_VIDEO, IOptions } from '@hooks/useWebRTC'
@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 import { UnMute } from '@components/icons/UnMute'
 import { Camera } from '@components/icons/Camera'
 import { Exit } from '@components/icons/Exit'
+import { Share } from '@components/icons/Share'
 
 interface VideoChatProps {
   className?: string
@@ -15,6 +16,7 @@ interface VideoChatProps {
 
 export const VideoChat: FC<VideoChatProps> = (props) => {
   const { className, roomId, options } = props
+  const desctop = useRef<HTMLVideoElement>(null)
   // получаем список всех наших клиентов
   const {
     clients,
@@ -23,6 +25,8 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
     toggleCamera,
     disableVideo,
     isMute,
+    shareDesctop,
+    desctopShare,
   } = useWebRTC(roomId, options)
   const navigate = useNavigate()
 
@@ -32,6 +36,12 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
   const changeCameraStatus = () => {
     toggleCamera(!disableVideo)
   }
+
+  useEffect(() => {
+    if (desctop.current && desctopShare) {
+      desctop.current.srcObject = new MediaStream([desctopShare])
+    }
+  }, [desctopShare])
   return (
     <div className={classNames(cls.VideoChat, {}, [className])}>
       <div className={cls.wrapper}>
@@ -48,6 +58,17 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
           </div>
         ))}
       </div>
+      {desctopShare && (
+        <div className={cls.desctop}>
+          <video
+            className="video"
+            ref={desctop}
+            autoPlay
+            playsInline
+            muted={true}
+          />
+        </div>
+      )}
       <div className={cls.constrolBlock}>
         <button
           onClick={changeMicStatus}
@@ -67,6 +88,11 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
           className={classNames(cls.btn, {}, [cls.exitBtn])}
           onClick={() => navigate('/')}>
           <Exit />
+        </button>
+        <button
+          onClick={shareDesctop}
+          className={classNames(cls.btn, {}, [cls.shareBtn])}>
+          <Share />
         </button>
       </div>
     </div>

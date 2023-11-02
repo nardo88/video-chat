@@ -17,12 +17,7 @@ export enum ACTIONS {
   ICE_CANDIDATE = 'ice-candidate',
   // когда нам придет новая сессия и нам надо будет ее у себя использовать
   SESSION_DESCRIPTION = 'session-description',
-  // отключение микрофона
-  TOOGLE_MIC = 'toggle_mic',
-  //принимаем статус микрофона
-  SET_MIC_STATUS = 'set_mic_status',
-  // отключение камеры
-  TOOGLE_CAMERA = 'toggle_camera',
-  //принимаем статус камеры
-  SET_CAMERA_STATUS = 'set_camera_status',
+  // начинаем шаринг экрана
+  START_SHARE_DESCTOP = 'start-share-desctop',
+  STOP_SHARE_DESCTOP = 'stop-share-desctop',
 }
