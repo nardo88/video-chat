@@ -44,31 +44,55 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
   }, [desctopShare])
   return (
     <div className={classNames(cls.VideoChat, {}, [className])}>
-      <div className={cls.wrapper}>
-        {clients.map((client) => (
-          <div key={client.peerId} className={cls.video}>
-            <p className={cls.videoInfo}>{client.name}</p>
-            <video
-              className="video"
-              ref={(instanse) => provideMediaRef(client.peerId, instanse)}
-              autoPlay
-              playsInline
-              muted={client.peerId === LOCAL_VIDEO}
-            />
-          </div>
-        ))}
-      </div>
-      {desctopShare && (
-        <div className={cls.desctop}>
-          <video
-            className="video"
-            ref={desctop}
-            autoPlay
-            playsInline
-            muted={true}
-          />
+      <div className={cls.content}>
+        <div className={cls.userListWrapper}>
+          <ul className={cls.userList}>
+            {clients.map((user) => (
+              <li key={user.peerId} className={cls.userItem}>
+                <span
+                  className={classNames(cls.userName, {
+                    [cls.local]: user.peerId === 'LOCAL_VIDEO',
+                  })}>
+                  {user.name}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
+        <div className={cls.shareSection}>
+          {desctopShare && (
+            <div className={cls.desctop}>
+              <video
+                className="video"
+                ref={desctop}
+                autoPlay
+                playsInline
+                muted={true}
+              />
+            </div>
+          )}
+          {!desctopShare && (
+            <div className={cls.emptyDesctop}>
+              {clients.find((u) => u.peerId === 'LOCAL_VIDEO')?.name || ''}
+            </div>
+          )}
+        </div>
+        <div className={cls.cameraListWapper}>
+          {clients.map((client) => (
+            <div key={client.peerId} className={cls.video}>
+              <p className={cls.videoInfo}>{client.name}</p>
+              <video
+                className="video"
+                ref={(instanse) => provideMediaRef(client.peerId, instanse)}
+                autoPlay
+                playsInline
+                muted={client.peerId === LOCAL_VIDEO}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className={cls.constrolBlock}>
         <button
           onClick={changeMicStatus}

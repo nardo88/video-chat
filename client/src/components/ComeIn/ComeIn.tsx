@@ -38,7 +38,7 @@ export const ComeIn: FC<ComeInProps> = (props) => {
   }, [])
 
   return (
-    <div>
+    <div className={cls.ComeIn}>
       <h2 className={cls.title}>присоединиться к видеовстрече</h2>
       <div className={cls.constrolBlock}>
         <button

@@ -85,7 +85,7 @@ export function useWebRTC(
         const track = data.getTracks()[0]
         localMediaStreem.current!.addTrack(track)
         setDesctopShare(track)
-        socket.emit(ACTIONS.START_SHARE_DESCTOP, { trackId: track.id })
+        socket.emit(ACTIONS.START_SHARE_DESCTOP, { trackId: track.id, roomId })
 
         track.onended = () => {
           localMediaStreem.current!.removeTrack(track)

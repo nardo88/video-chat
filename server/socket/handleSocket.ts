@@ -5,6 +5,7 @@ import { leaveRoom } from '@utils/leaveRoom'
 import { relaySdp } from './relaSdp'
 import { shareRoomsInfo } from '@utils/shareRoomsInfo'
 import { relayIceCandidate } from './relayIceCandidate'
+import { startShare } from './startShare'
 
 export function handleSocket(socket: Socket, io: Server) {
   // при подключении нового клиента обновляем всем список доступных комнат
@@ -19,4 +20,5 @@ export function handleSocket(socket: Socket, io: Server) {
   // обработаем событие когда поступил ICE кандидат
   socket.on(ACTIONS.RELAY_ICE, relayIceCandidate(socket, io))
   // кто то начала шарить экран
+  socket.on(ACTIONS.START_SHARE_DESCTOP, startShare(socket, io))
 }
