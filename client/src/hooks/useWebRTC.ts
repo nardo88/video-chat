@@ -81,11 +81,26 @@ export function useWebRTC(
   // функция демонстрации экрана
   const shareDesctop = () => {
     if (localMediaStreem.current) {
-      navigator.mediaDevices.getDisplayMedia().then((data) => {
+      navigator.mediaDevices.getDisplayMedia().then(async (data) => {
         const track = data.getTracks()[0]
         localMediaStreem.current!.addTrack(track)
+
+        for (const peer in peerConnections.current) {
+          peerConnections.current[peer].addTrack(
+            track,
+            localMediaStreem!.current as MediaStream
+          )
+          const offer = await peerConnections.current[peer].createOffer()
+          peerConnections.current[peer]!.setLocalDescription(offer)
+          socket.emit(ACTIONS.START_SHARE_DESCTOP, {
+            peerId: peer,
+            trackId: track.id,
+            sessionDescription: offer,
+            type: 'offer',
+          })
+        }
+
         setDesctopShare(track)
-        socket.emit(ACTIONS.START_SHARE_DESCTOP, { trackId: track.id, roomId })
 
         track.onended = () => {
           localMediaStreem.current!.removeTrack(track)
@@ -99,18 +114,36 @@ export function useWebRTC(
     async function startShare({
       peerId,
       trackId,
+      sessionDescription,
+      type,
     }: {
       peerId: string
       trackId: string
+      sessionDescription: any
+      type: 'offer' | 'answer'
     }) {
-      if (peerMediaElements.current) {
-        const mediaProvider = peerMediaElements.current[peerId]
-          ?.srcObject as MediaStream
-        mediaProvider.getTracks().forEach((track) => {
-          if (track.id === trackId) {
-            setDesctopShare(track)
-          }
+      peerConnections.current[peerId]!.setRemoteDescription(sessionDescription)
+
+      if (type === 'offer') {
+        const answer = await peerConnections.current[peerId].createAnswer()
+        peerConnections.current[peerId].setLocalDescription(answer)
+        socket.emit(ACTIONS.START_SHARE_DESCTOP, {
+          peerId,
+          trackId,
+          sessionDescription: answer,
+          type: 'answer',
         })
+
+        if (peerMediaElements!.current[peerId]) {
+          const media = peerMediaElements!.current[peerId]
+            ?.srcObject as MediaStream
+
+          media.getTracks().forEach((track) => {
+            if (track.id === trackId) {
+              setDesctopShare(track)
+            }
+          })
+        }
       }
     }
 
@@ -157,6 +190,7 @@ export function useWebRTC(
       peerConnections.current[peerId].ontrack = ({
         streams: [remoteStream],
       }) => {
+        console.log('remoteStream: ', remoteStream)
         tracksNumber++
         // только в случае если количество треков равно 2 только тогда мы добавляем клиента
         if (tracksNumber === 2) {
