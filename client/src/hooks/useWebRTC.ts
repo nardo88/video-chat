@@ -18,6 +18,12 @@ export interface IClient {
   name: string
 }
 
+interface IDesctopShare {
+  track: MediaStreamTrack
+  trackId: string
+  peerId: string
+}
+
 export function useWebRTC(
   roomId: string,
   options: IOptions
@@ -27,9 +33,10 @@ export function useWebRTC(
   toggleMic: (val: boolean) => void
   toggleCamera: (val: boolean) => void
   shareDesctop: () => void
+  stopSharing: () => void
   isMute: boolean
   disableVideo: boolean
-  desctopShare: null | MediaStreamTrack
+  desctopShare: null | IDesctopShare
 } {
   // вписок всех клиентов
   const [clients, setClients] = useStateWithCallback([])
@@ -38,9 +45,7 @@ export function useWebRTC(
     options?.video || false
   )
   // состояние для потока демонстрации рабочего стола
-  const [desctopShare, setDesctopShare] = useState<null | MediaStreamTrack>(
-    null
-  )
+  const [desctopShare, setDesctopShare] = useState<null | IDesctopShare>(null)
 
   // тут мы проверяем, если в списке клиентом нового клиента еще нет, то мы его добавляем в список
   const addNewClient = useCallback(
@@ -90,6 +95,7 @@ export function useWebRTC(
             track,
             localMediaStreem!.current as MediaStream
           )
+
           const offer = await peerConnections.current[peer].createOffer()
           peerConnections.current[peer]!.setLocalDescription(offer)
           socket.emit(ACTIONS.START_SHARE_DESCTOP, {
@@ -100,149 +106,207 @@ export function useWebRTC(
           })
         }
 
-        setDesctopShare(track)
+        setDesctopShare({
+          track,
+          trackId: track.id,
+          peerId: LOCAL_VIDEO,
+        })
 
-        track.onended = () => {
-          localMediaStreem.current!.removeTrack(track)
+        track.onended = async () => {
+          const track = localMediaStreem.current!.getTracks()[2]
+          localMediaStreem.current?.removeTrack(track)
+
+          for (const peer in peerConnections.current) {
+            const offer = await peerConnections.current[peer].createOffer()
+            peerConnections.current[peer]!.setLocalDescription(offer)
+            socket.emit(ACTIONS.STOP_SHARE_DESCTOP, {
+              peerId: peer,
+              sessionDescription: offer,
+              type: 'offer',
+            })
+          }
           setDesctopShare(null)
         }
       })
     }
   }
 
-  useEffect(() => {
-    async function startShare({
-      peerId,
-      trackId,
-      sessionDescription,
-      type,
-    }: {
-      peerId: string
-      trackId: string
-      sessionDescription: any
-      type: 'offer' | 'answer'
-    }) {
-      peerConnections.current[peerId]!.setRemoteDescription(sessionDescription)
+  const stopSharing = async () => {
+    if (desctopShare) {
+      desctopShare.track.stop()
+      const track = localMediaStreem
+        .current!.getTracks()
+        .find((i) => i.id === desctopShare.trackId) as MediaStreamTrack
+      localMediaStreem.current?.removeTrack(track)
 
-      if (type === 'offer') {
-        const answer = await peerConnections.current[peerId].createAnswer()
-        peerConnections.current[peerId].setLocalDescription(answer)
-        socket.emit(ACTIONS.START_SHARE_DESCTOP, {
-          peerId,
-          trackId,
-          sessionDescription: answer,
-          type: 'answer',
+      for (const peer in peerConnections.current) {
+        const offer = await peerConnections.current[peer].createOffer()
+        peerConnections.current[peer]!.setLocalDescription(offer)
+        socket.emit(ACTIONS.STOP_SHARE_DESCTOP, {
+          peerId: peer,
+          sessionDescription: offer,
+          type: 'offer',
         })
+      }
 
-        if (peerMediaElements!.current[peerId]) {
-          const media = peerMediaElements!.current[peerId]
-            ?.srcObject as MediaStream
+      setDesctopShare(null)
+    }
+  }
+  async function startShare({
+    peerId,
+    trackId,
+    sessionDescription,
+    type,
+  }: {
+    peerId: string
+    trackId: string
+    sessionDescription: any
+    type: 'offer' | 'answer'
+  }) {
+    peerConnections.current[peerId]!.setRemoteDescription(sessionDescription)
 
-          media.getTracks().forEach((track) => {
-            if (track.id === trackId) {
-              setDesctopShare(track)
-            }
-          })
-        }
+    if (type === 'offer') {
+      const answer = await peerConnections.current[peerId].createAnswer()
+      peerConnections.current[peerId].setLocalDescription(answer)
+      socket.emit(ACTIONS.START_SHARE_DESCTOP, {
+        peerId,
+        trackId,
+        sessionDescription: answer,
+        type: 'answer',
+      })
+
+      if (peerMediaElements!.current[peerId]) {
+        const media = peerMediaElements!.current[peerId]
+          ?.srcObject as MediaStream
+
+        setDesctopShare({
+          peerId,
+          track: media.getTracks().pop() as MediaStreamTrack,
+          trackId,
+        })
       }
     }
-
+  }
+  useEffect(() => {
     socket.on(ACTIONS.START_SHARE_DESCTOP, startShare)
   }, [])
 
-  // логика добавления нового пира
-  useEffect(() => {
-    // Функция добавления нового пира (клиента с настройками)
-    async function handleNewPeer({
-      peerId,
-      createOffer,
-      name,
-    }: {
-      peerId: string
-      name: string
-      createOffer: any
-    }) {
-      // если мы уже подключены к пиру то ничего не делаем
-      if (peerId in peerConnections.current) {
-        return console.warn('already connected to peerId' + ' ' + peerId)
-      }
-      // в противном случае создаем peerConnection
-      peerConnections.current[peerId] = new RTCPeerConnection({
-        // передаем iceServers - который вернет мета данные пользователя
-        // freeice - предоставляет адреса STUN серверов
-        iceServers: freeice(),
+  async function stopShare({
+    peerId,
+    sessionDescription,
+    type,
+  }: {
+    peerId: string
+    sessionDescription: any
+    type: 'offer' | 'answer'
+  }) {
+    peerConnections.current[peerId]!.setRemoteDescription(sessionDescription)
+    setDesctopShare(null)
+    if (type === 'offer') {
+      const answer = await peerConnections.current[peerId].createAnswer()
+      peerConnections.current[peerId].setLocalDescription(answer)
+      socket.emit(ACTIONS.STOP_SHARE_DESCTOP, {
+        peerId,
+        sessionDescription: answer,
+        type: 'answer',
       })
+    }
+  }
+  useEffect(() => {
+    socket.on(ACTIONS.STOP_SHARE_DESCTOP, stopShare)
+  }, [])
 
-      // создаем слушатель на событие onicecandidate
-      peerConnections.current[peerId].onicecandidate = (event) => {
-        // если кандидат есть, то нам надо поделиться им со всеми
-        if (event.candidate) {
-          socket.emit(ACTIONS.RELAY_ICE, {
-            peerId,
-            iceCandidate: event.candidate,
-          })
-        }
-      }
+  // Функция добавления нового пира (клиента с настройками)
+  async function handleNewPeer({
+    peerId,
+    createOffer,
+    name,
+  }: {
+    peerId: string
+    name: string
+    createOffer: any
+  }) {
+    // если мы уже подключены к пиру то ничего не делаем
+    if (peerId in peerConnections.current) {
+      return console.warn('already connected to peerId' + ' ' + peerId)
+    }
+    // в противном случае создаем peerConnection
+    peerConnections.current[peerId] = new RTCPeerConnection({
+      // передаем iceServers - который вернет мета данные пользователя
+      // freeice - предоставляет адреса STUN серверов
+      iceServers: freeice(),
+    })
 
-      // нам должны приходить два трека в медиа потоке (аудио и видео) мы будет отображать только тех у кого именно две дорожки
-      let tracksNumber = 0
-      // подписываем на событие которое срабатывает когда нам приходит новый трек (стримы)
-      peerConnections.current[peerId].ontrack = ({
-        streams: [remoteStream],
-      }) => {
-        console.log('remoteStream: ', remoteStream)
-        tracksNumber++
-        // только в случае если количество треков равно 2 только тогда мы добавляем клиента
-        if (tracksNumber === 2) {
-          // добавляем в состояние нового клиента
-          remoteStream.getVideoTracks()[0].enabled = disableVideo
-          remoteStream.getAudioTracks()[0].enabled = isMute
-          tracksNumber = 0
-
-          addNewClient({ peerId, name: name || 'Неивестный бобер' }, () => {
-            peerMediaElements.current[peerId]!.srcObject = remoteStream
-          })
-        } else {
-          // FIX LONG RENDER IN CASE OF MANY CLIENTS
-          let settled = false
-          const interval = setInterval(() => {
-            if (peerMediaElements.current[peerId]) {
-              peerMediaElements.current[peerId]!.srcObject = remoteStream
-              settled = true
-            }
-
-            if (settled) {
-              clearInterval(interval)
-            }
-          }, 1000)
-        }
-      }
-
-      // теперь надо добавить наш медиастрим к нашему экземпляру peer соединения
-      if (localMediaStreem.current) {
-        localMediaStreem.current.getTracks().forEach((track) => {
-          if (localMediaStreem.current) {
-            peerConnections.current[peerId].addTrack(
-              track,
-              localMediaStreem.current
-            )
-          }
-        })
-      }
-      // если надо создать offer
-      if (createOffer) {
-        // создаем offer
-        const offer = await peerConnections.current[peerId].createOffer()
-        // устанавливаем его в localDescription
-        await peerConnections.current[peerId].setLocalDescription(offer)
-        // отправляем SDP данные сокету
-        socket.emit(ACTIONS.RELAY_SDP, {
+    // создаем слушатель на событие onicecandidate
+    peerConnections.current[peerId].onicecandidate = (event) => {
+      // если кандидат есть, то нам надо поделиться им со всеми
+      if (event.candidate) {
+        socket.emit(ACTIONS.RELAY_ICE, {
           peerId,
-          sessionDescription: offer,
-          name: options.name,
+          iceCandidate: event.candidate,
         })
       }
     }
+
+    // нам должны приходить два трека в медиа потоке (аудио и видео) мы будет отображать только тех у кого именно две дорожки
+    let tracksNumber = 0
+    // подписываем на событие которое срабатывает когда нам приходит новый трек (стримы)
+    peerConnections.current[peerId].ontrack = ({ streams }) => {
+      const [remoteStream] = streams
+
+      tracksNumber++
+      // только в случае если количество треков равно 2 только тогда мы добавляем клиента
+      if (tracksNumber === 2) {
+        // добавляем в состояние нового клиента
+        remoteStream.getVideoTracks()[0].enabled = disableVideo
+        remoteStream.getAudioTracks()[0].enabled = isMute
+        tracksNumber = 0
+
+        addNewClient({ peerId, name: name || 'Неивестный бобер' }, () => {
+          peerMediaElements.current[peerId]!.srcObject = remoteStream
+        })
+      } else {
+        // FIX LONG RENDER IN CASE OF MANY CLIENTS
+        let settled = false
+        const interval = setInterval(() => {
+          if (peerMediaElements.current[peerId]) {
+            peerMediaElements.current[peerId]!.srcObject = remoteStream
+            settled = true
+          }
+          if (settled) {
+            clearInterval(interval)
+          }
+        }, 1000)
+      }
+    }
+
+    // теперь надо добавить наш медиастрим к нашему экземпляру peer соединения
+    if (localMediaStreem.current) {
+      localMediaStreem.current.getTracks().forEach((track) => {
+        if (localMediaStreem.current) {
+          peerConnections.current[peerId].addTrack(
+            track,
+            localMediaStreem.current
+          )
+        }
+      })
+    }
+    // если надо создать offer
+    if (createOffer) {
+      // создаем offer
+      const offer = await peerConnections.current[peerId].createOffer()
+      // устанавливаем его в localDescription
+      await peerConnections.current[peerId].setLocalDescription(offer)
+      // отправляем SDP данные сокету
+      socket.emit(ACTIONS.RELAY_SDP, {
+        peerId,
+        sessionDescription: offer,
+        name: options.name,
+      })
+    }
+  }
+  // логика добавления нового пира
+  useEffect(() => {
     // слушаем событие которое генерирует сервер
     socket.on(ACTIONS.ADD_PEER, handleNewPeer)
 
@@ -251,43 +315,44 @@ export function useWebRTC(
     }
   }, [])
 
+  // функция которая принимает sessionDescription (для получения чужого видео потока)
+  async function setRemoteVideo({
+    peerId,
+    sessionDescription: remoteDescription,
+    name,
+  }: {
+    peerId: string
+    sessionDescription: any
+    name: string
+  }) {
+    // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
+    await peerConnections.current[peerId]?.setRemoteDescription(
+      new RTCSessionDescription(remoteDescription)
+    )
+
+    setClients((prev: IClient[]) =>
+      prev.map((client) =>
+        client.peerId === peerId ? { ...client, name } : client
+      )
+    )
+
+    // если это offer то нам надо создать ответ (answer)
+    if (remoteDescription.type === 'offer') {
+      const answer = await peerConnections.current[peerId].createAnswer()
+      // и устанавливаем ответ как localDescription
+      peerConnections.current[peerId].setLocalDescription(answer)
+
+      // и отправляем его в сокет
+      socket.emit(ACTIONS.RELAY_SDP, {
+        peerId,
+        sessionDescription: answer,
+        name: options.name,
+      })
+    }
+  }
+
   // добавим слушатели на получени session_description (offer)
   useEffect(() => {
-    // функция которая принимает sessionDescription (для получения чужого видео потока)
-    async function setRemoteVideo({
-      peerId,
-      sessionDescription: remoteDescription,
-      name,
-    }: {
-      peerId: string
-      sessionDescription: any
-      name: string
-    }) {
-      // записивываем в setRemoteDescription но через конструктор (для кроссбраузерности)
-      await peerConnections.current[peerId]?.setRemoteDescription(
-        new RTCSessionDescription(remoteDescription)
-      )
-
-      setClients((prev: IClient[]) =>
-        prev.map((client) =>
-          client.peerId === peerId ? { ...client, name } : client
-        )
-      )
-
-      // если это offer то нам надо создать ответ (answer)
-      if (remoteDescription.type === 'offer') {
-        const answer = await peerConnections.current[peerId].createAnswer()
-        // и устанавливаем ответ как localDescription
-        peerConnections.current[peerId].setLocalDescription(answer)
-        // и отправляем его в сокет
-        socket.emit(ACTIONS.RELAY_SDP, {
-          peerId,
-          sessionDescription: answer,
-          name: options.name,
-        })
-      }
-    }
-
     socket.on(ACTIONS.SESSION_DESCRIPTION, setRemoteVideo)
 
     return () => {
@@ -325,36 +390,35 @@ export function useWebRTC(
       socket.off(ACTIONS.REMOVE_PEER)
     }
   }, [])
+  async function startCapture() {
+    // записываем в ref ссылку на видеопоток от веб камеры + микрофон
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: 640,
+        height: 480,
+      },
+      audio: true,
+    })
+
+    mediaStream.getAudioTracks()[0].enabled = !isMute
+    mediaStream.getVideoTracks()[0].enabled = !disableVideo
+
+    localMediaStreem.current = mediaStream
+    // после того как мы захватили видеопоток, нам надо добавить пользователя
+    addNewClient({ peerId: LOCAL_VIDEO, name: options.name }, () => {
+      const localVideoElement = peerMediaElements.current[LOCAL_VIDEO]
+      // если видео тег нашего медиапотока есть, то мы должны:
+      if (localVideoElement) {
+        // отключить у себя звук, что бы мы не слышали сами себя
+        localVideoElement.volume = 0
+        // передать медиастрим в качестве src
+        localVideoElement.srcObject = localMediaStreem.current
+      }
+    })
+  }
 
   // логика установки webRTC соединения
   useEffect(() => {
-    async function startCapture() {
-      // записываем в ref ссылку на видеопоток от веб камеры + микрофон
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: 640,
-          height: 480,
-        },
-        audio: true,
-      })
-
-      mediaStream.getAudioTracks()[0].enabled = !isMute
-      mediaStream.getVideoTracks()[0].enabled = !disableVideo
-
-      localMediaStreem.current = mediaStream
-      // после того как мы захватили видеопоток, нам надо добавить пользователя
-      addNewClient({ peerId: LOCAL_VIDEO, name: options.name }, () => {
-        const localVideoElement = peerMediaElements.current[LOCAL_VIDEO]
-        // если видео тег нашего медиапотока есть, то мы должны:
-        if (localVideoElement) {
-          // отключить у себя звук, что бы мы не слышали сами себя
-          localVideoElement.volume = 0
-          // передать медиастрим в качестве src
-          localVideoElement.srcObject = localMediaStreem.current
-        }
-      })
-    }
-
     startCapture()
       .then(() => {
         if (roomId) socket.emit(ACTIONS.JOIN, { room: roomId })
@@ -362,7 +426,6 @@ export function useWebRTC(
       .catch((e) => {
         console.error('Error to get UserMedia', e)
       })
-
     // логика выхода из комнаты
     return () => {
       // останваливаем захват медиа
@@ -394,5 +457,6 @@ export function useWebRTC(
     disableVideo,
     shareDesctop,
     desctopShare,
+    stopSharing,
   }
 }

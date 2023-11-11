@@ -27,6 +27,7 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
     isMute,
     shareDesctop,
     desctopShare,
+    stopSharing,
   } = useWebRTC(roomId, options)
   const navigate = useNavigate()
 
@@ -39,7 +40,7 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
 
   useEffect(() => {
     if (desctop.current && desctopShare) {
-      desctop.current.srcObject = new MediaStream([desctopShare])
+      desctop.current.srcObject = new MediaStream([desctopShare.track])
     }
   }, [desctopShare])
   return (
@@ -113,11 +114,19 @@ export const VideoChat: FC<VideoChatProps> = (props) => {
           onClick={() => navigate('/')}>
           <Exit />
         </button>
-        <button
-          onClick={shareDesctop}
-          className={classNames(cls.btn, {}, [cls.shareBtn])}>
-          <Share />
-        </button>
+        {!desctopShare ? (
+          <button
+            onClick={shareDesctop}
+            className={classNames(cls.btn, {}, [cls.shareBtn])}>
+            <Share />
+          </button>
+        ) : desctopShare.peerId === 'LOCAL_VIDEO' ? (
+          <button
+            onClick={stopSharing}
+            className={classNames(cls.btn, {}, [cls.shareBtn])}>
+            stop
+          </button>
+        ) : null}
       </div>
     </div>
   )
